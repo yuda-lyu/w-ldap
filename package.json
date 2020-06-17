@@ -1,6 +1,6 @@
 {
   "name": "w-ldap",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A LDAP tool for windows",
   "main": "dist/w-ldap.umd.js",
   "dependencies": {

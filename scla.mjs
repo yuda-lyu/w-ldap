@@ -32,3 +32,6 @@ async function test() {
 
 }
 test()
+    .catch((err) => {
+        console.log('catch', err)
+    })
