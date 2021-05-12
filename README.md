@@ -21,7 +21,7 @@ npm i w-ldap
 ```
 
 #### Example:
-> **Link:** [[dev source code](https://github.com/yuda-lyu/w-ldap/blob/master/scla.mjs)]
+> **Link:** [[dev source code](https://github.com/yuda-lyu/w-ldap/blob/master/g.mjs)]
 ```alias
 import WLdap from 'w-ldap'
 
