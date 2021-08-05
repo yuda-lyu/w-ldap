@@ -19,7 +19,7 @@ async function test() {
     }
     r = await WLdap(inp)
     console.log('logIn', r)
-    w.fsWriteText('logIn.txt', w.o2j(r, true))
+    w.fsWriteText('./logIn.txt', w.o2j(r, true))
 
     inp = {
         mode: 'listUsers',
@@ -28,7 +28,7 @@ async function test() {
         ldappath,
     }
     r = await WLdap(inp)
-    w.fsWriteText('listUsers.txt', w.o2j(r, true))
+    w.fsWriteText('./listUsers.txt', w.o2j(r, true))
 
 }
 test()
