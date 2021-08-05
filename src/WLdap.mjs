@@ -22,7 +22,7 @@ function isWindows() {
 
 
 function getExecFolder() {
-    let ver = `4.7.2`
+    let ver = `4.8`
     let fn472 = `connLDAP.net${ver}.exe`
     let fdExeSrc = `${fdSrv}/src/`
     let fdExeNM = `${fdSrv}/node_modules/w-ldap/src/`
@@ -64,7 +64,7 @@ function trimBOM(c) {
  * @param {String} [opt.password] 輸入LDAP帳號之密碼字串
  * @param {String} [opt.ldappath] 輸入LDAP伺服器位址字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
- * @param {String} [opt.ver='4.7.2'] 輸入調用windows程序之Net Framework版本字串，可有'4.5'、'4.6'與'4.7.2'，預設'4.7.2'
+ * @param {String} [opt.ver='4.8'] 輸入調用windows程序之Net Framework版本字串，可有'4.5'、'4.6'、'4.7.2'與'4.8'，預設'4.8'
  * @returns {Promise} 回傳Promise，resolve回傳成功訊息，reject回傳錯誤訊息
  * @example
  * import WLdap from 'w-ldap'
@@ -132,12 +132,12 @@ async function WLdap(input = {}, opt = {}) {
     //ver
     let ver = get(opt, 'ver', null)
     if (!isestr(ver)) {
-        ver = '4.7.2'
+        ver = '4.8'
     }
 
     //check
-    if (!arrhas(ver, ['4.5', '4.6', '4.7.2'])) {
-        return Promise.reject('opt.ver needs to be one of 4.5, 4.6 and 4.7.2')
+    if (!arrhas(ver, ['4.5', '4.6', '4.7.2', '4.8'])) {
+        return Promise.reject('opt.ver needs to be one of 4.5, 4.6, 4.7.2 or 4.8')
     }
 
     //fdExe

@@ -49,3 +49,17 @@ D:\開源-JS-103-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.exe
 D:\開源-JS-103-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.xml
 D:\開源-JS-103-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.pdb
 D:\開源-JS-103-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.vbprojAssemblyReference.cache
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\bin\Debug\connLDAP.exe.config
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\bin\Debug\connLDAP.exe
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\bin\Debug\connLDAP.pdb
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\bin\Debug\connLDAP.xml
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\bin\Debug\Newtonsoft.Json.dll
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\bin\Debug\Newtonsoft.Json.xml
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.vbprojAssemblyReference.cache
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.Resources.resources
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.vbproj.GenerateResource.cache
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.vbproj.CoreCompileInputs.cache
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.vbproj.CopyComplete
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.exe
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.xml
+D:\開源-JS-003-2-w-ldap\w-ldap\srcVB\connLDAP\obj\Debug\connLDAP.pdb
