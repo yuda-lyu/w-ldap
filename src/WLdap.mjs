@@ -23,14 +23,14 @@ function isWindows() {
 
 function getExecFolder() {
     let ver = `4.8`
-    let fn472 = `connLDAP.net${ver}.exe`
+    let fnExe = `connLDAP.net${ver}.exe`
     let fdExeSrc = `${fdSrv}/src/`
     let fdExeNM = `${fdSrv}/node_modules/w-ldap/src/`
 
-    if (fsIsFile(`${fdExeSrc}${fn472}`)) {
+    if (fsIsFile(`${fdExeSrc}${fnExe}`)) {
         return fdExeSrc
     }
-    else if (fsIsFile(`${fdExeNM}${fn472}`)) {
+    else if (fsIsFile(`${fdExeNM}${fnExe}`)) {
         return fdExeNM
     }
     else {

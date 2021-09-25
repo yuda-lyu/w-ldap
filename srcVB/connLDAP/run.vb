@@ -116,7 +116,7 @@ Module run
             'ds
             Dim ds = New DirectorySearcher(de)
             ds.PageSize = Integer.MaxValue
-            ds.Filter = "(samaccountname=*)" '預設用samaccountname欄位為*提取全部數據
+            ds.Filter = "(samaccountname=*)" '預設用samaccountname欄位為*提取全部數據, 可不使用Filter, 但全撈AD資料通常數據很大故會很久
 
             'FindAll
             Dim res = ds.FindAll()
