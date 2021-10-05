@@ -8,7 +8,7 @@ import b642str from 'wsemi/src/b642str.mjs'
 import j2o from 'wsemi/src/j2o.mjs'
 import execScript from 'wsemi/src/execScript.mjs'
 import fsIsFile from 'wsemi/src/fsIsFile.mjs'
-import arrhas from 'wsemi/src/arrhas.mjs'
+import arrHas from 'wsemi/src/arrHas.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
 import iseobj from 'wsemi/src/iseobj.mjs'
 
@@ -136,7 +136,7 @@ async function WLdap(input = {}, opt = {}) {
     }
 
     //check
-    if (!arrhas(ver, ['4.5', '4.6', '4.7.2', '4.8'])) {
+    if (!arrHas(ver, ['4.5', '4.6', '4.7.2', '4.8'])) {
         return Promise.reject('opt.ver needs to be one of 4.5, 4.6, 4.7.2 or 4.8')
     }
 
