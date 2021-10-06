@@ -3,7 +3,6 @@ A LDAP tool for windows.
 
 ![language](https://img.shields.io/badge/language-JavaScript-orange.svg) 
 [![npm version](http://img.shields.io/npm/v/w-ldap.svg?style=flat)](https://npmjs.org/package/w-ldap) 
-[![Build Status](https://travis-ci.org/yuda-lyu/w-ldap.svg?branch=master)](https://travis-ci.org/yuda-lyu/w-ldap) 
 [![license](https://img.shields.io/npm/l/w-ldap.svg?style=flat)](https://npmjs.org/package/w-ldap) 
 [![gzip file size](http://img.badgesize.io/yuda-lyu/w-ldap/master/dist/w-ldap.umd.js.svg?compression=gzip)](https://github.com/yuda-lyu/w-ldap)
 [![npm download](https://img.shields.io/npm/dt/w-ldap.svg)](https://npmjs.org/package/w-ldap) 
