@@ -41,7 +41,7 @@ Module run
             Console.WriteLine(sysFunction.o2j(o, False)) '測試時顯示於螢幕
             Return sysFunction.o2j(o, True)
         Else
-            Return sysFunction.o2b(o) '序列化文字有些無法被nodejs解析故需轉為base64, 現改為輸出檔案其實就不用
+            Return sysFunction.o2b(o) '序列化文字有些無法被nodejs解析故需轉為base64
         End If
     End Function
 
