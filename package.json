@@ -1,14 +1,14 @@
 {
   "name": "w-ldap",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A LDAP tool for windows",
   "main": "dist/w-ldap.umd.js",
   "dependencies": {
     "lodash": "^4.17.21",
-    "wsemi": "^1.6.34"
+    "wsemi": "^1.6.54"
   },
   "devDependencies": {
-    "w-package-tools": "^1.0.59"
+    "w-package-tools": "^1.0.65"
   },
   "scripts": {
     "test": "mocha --parallel --timeout 60000 --experimental-modules --es-module-specifier-resolution=node",
