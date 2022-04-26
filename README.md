@@ -11,9 +11,12 @@ A LDAP tool for windows.
 ## Documentation
 To view documentation or get support, visit [docs](https://yuda-lyu.github.io/w-ldap/global.htm).
 
+## Core
+> `w-data-mseed` is basing on the `Microsoft .Net Framework`.
+
 ## Installation
 ### Using npm(ES6 module):
-> **Note:** `w-ldap` is mainly dependent on `lodash` and `wsemi`.
+> **Note:** `w-ldap` is mainly dependent on `lodash` and `wsemi`, and should run in `Windows`.
 
 ```alias
 npm i w-ldap
