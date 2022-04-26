@@ -59,11 +59,11 @@ function trimBOM(c) {
  * 呼叫LDAP服務進行登入或取得使用者清單，係呼叫Net程式呼叫LDAP取得資料，故會有Net Framework版本與作業系統限制
  *
  * @param {Object} input 輸入設定物件，預設{}
+ * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {String} [opt.mode] 輸入呼叫方法字串，可有'logIn'與'listUsers'
  * @param {String} [opt.account] 輸入LDAP帳號字串
  * @param {String} [opt.password] 輸入LDAP帳號之密碼字串
  * @param {String} [opt.ldappath] 輸入LDAP伺服器位址字串
- * @param {Object} [opt={}] 輸入設定物件，預設{}
  * @param {String} [opt.ver='4.8'] 輸入調用windows程序之Net Framework版本字串，可有'4.5'、'4.6'、'4.7.2'與'4.8'，預設'4.8'
  * @returns {Promise} 回傳Promise，resolve回傳成功訊息，reject回傳錯誤訊息
  * @example
