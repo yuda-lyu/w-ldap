@@ -9,7 +9,7 @@ A LDAP tool for windows.
 [![jsdelivr download](https://img.shields.io/jsdelivr/npm/hm/w-ldap.svg)](https://www.jsdelivr.com/package/npm/w-ldap)
 
 ## Documentation
-To view documentation or get support, visit [docs](https://yuda-lyu.github.io/w-ldap/global.htm).
+To view documentation or get support, visit [docs](https://yuda-lyu.github.io/w-ldap/global.html).
 
 ## Core
 > `w-ldap` is basing on the `Microsoft .Net Framework`.
