@@ -12,7 +12,7 @@ A LDAP tool for windows.
 To view documentation or get support, visit [docs](https://yuda-lyu.github.io/w-ldap/global.htm).
 
 ## Core
-> `w-data-mseed` is basing on the `Microsoft .Net Framework`.
+> `w-ldap` is basing on the `Microsoft .Net Framework`.
 
 ## Installation
 ### Using npm(ES6 module):
