@@ -1,13 +1,13 @@
 {
   "name": "w-ldap",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "main": "dist/w-ldap.umd.js",
   "dependencies": {
-    "lodash": "^4.17.21",
-    "wsemi": "^1.7.38"
+    "lodash-es": "^4.17.21",
+    "wsemi": "^1.7.47"
   },
   "devDependencies": {
-    "w-package-tools": "^1.0.70"
+    "w-package-tools": "^1.0.73"
   },
   "scripts": {
     "test": "mocha --parallel --timeout 60000 --experimental-modules --es-module-specifier-resolution=node",

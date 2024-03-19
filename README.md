@@ -6,6 +6,7 @@ A LDAP tool for windows.
 [![license](https://img.shields.io/npm/l/w-ldap.svg?style=flat)](https://npmjs.org/package/w-ldap) 
 [![gzip file size](http://img.badgesize.io/yuda-lyu/w-ldap/master/dist/w-ldap.umd.js.svg?compression=gzip)](https://github.com/yuda-lyu/w-ldap)
 [![npm download](https://img.shields.io/npm/dt/w-ldap.svg)](https://npmjs.org/package/w-ldap) 
+[![npm download](https://img.shields.io/npm/dm/w-ldap.svg)](https://npmjs.org/package/w-ldap) 
 [![jsdelivr download](https://img.shields.io/jsdelivr/npm/hm/w-ldap.svg)](https://www.jsdelivr.com/package/npm/w-ldap)
 
 ## Documentation
@@ -16,7 +17,7 @@ To view documentation or get support, visit [docs](https://yuda-lyu.github.io/w-
 
 ## Installation
 ### Using npm(ES6 module):
-> **Note:** `w-ldap` is mainly dependent on `lodash` and `wsemi`, and should run in `Windows`.
+> **Note:** `w-ldap` is mainly dependent on `lodash-es` and `wsemi`, and should run in `Windows`.
 
 ```alias
 npm i w-ldap
