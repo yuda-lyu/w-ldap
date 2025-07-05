@@ -37,4 +37,4 @@ test()
     })
 
 //需運行於AD環境，並於測試腳本填入帳密與ldap位址
-//node --experimental-modules --es-module-specifier-resolution=node g.mjs
+//node g.mjs

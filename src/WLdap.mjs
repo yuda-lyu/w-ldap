@@ -3,14 +3,14 @@ import fs from 'fs'
 import process from 'process'
 import get from 'lodash-es/get.js'
 import genID from 'wsemi/src/genID.mjs'
+import isestr from 'wsemi/src/isestr.mjs'
+import iseobj from 'wsemi/src/iseobj.mjs'
+import arrHas from 'wsemi/src/arrHas.mjs'
 import str2b64 from 'wsemi/src/str2b64.mjs'
 import b642str from 'wsemi/src/b642str.mjs'
 import j2o from 'wsemi/src/j2o.mjs'
-import execScript from 'wsemi/src/execScript.mjs'
+import execProcess from 'wsemi/src/execProcess.mjs'
 import fsIsFile from 'wsemi/src/fsIsFile.mjs'
-import arrHas from 'wsemi/src/arrHas.mjs'
-import isestr from 'wsemi/src/isestr.mjs'
-import iseobj from 'wsemi/src/iseobj.mjs'
 
 
 let fdSrv = path.resolve()
@@ -18,33 +18,6 @@ let fdSrv = path.resolve()
 
 function isWindows() {
     return process.platform === 'win32'
-}
-
-
-function getExecFolder() {
-    let ver = `4.8`
-    let fnExe = `connLDAP.net${ver}.exe`
-    let fdExeSrc = `${fdSrv}/src/`
-    let fdExeNM = `${fdSrv}/node_modules/w-ldap/src/`
-
-    if (fsIsFile(`${fdExeSrc}${fnExe}`)) {
-        return fdExeSrc
-    }
-    else if (fsIsFile(`${fdExeNM}${fnExe}`)) {
-        return fdExeNM
-    }
-    else {
-        return { error: 'can not find executable file for connLDAP' }
-    }
-}
-
-
-function getExecPath(fd, ver) {
-
-    //fn
-    let fn = `connLDAP.net${ver}.exe`
-
-    return `${fd}${fn}`
 }
 
 
@@ -103,6 +76,7 @@ function trimBOM(c) {
  *
  */
 async function WLdap(input = {}, opt = {}) {
+    let errTemp = null
 
     //isWindows
     if (!isWindows()) {
@@ -140,8 +114,24 @@ async function WLdap(input = {}, opt = {}) {
         return Promise.reject('opt.ver needs to be one of 4.5, 4.6, 4.7.2 or 4.8')
     }
 
+    //fnExe
+    let fnExe = `connLDAP.net${ver}.exe`
+
     //fdExe
-    let fdExe = getExecFolder()
+    let fdExe = ''
+    if (true) {
+        let fdExeSrc = `${fdSrv}/src/`
+        let fdExeNM = `${fdSrv}/node_modules/w-ldap/src/`
+        if (fsIsFile(`${fdExeSrc}${fnExe}`)) {
+            fdExe = fdExeSrc
+        }
+        else if (fsIsFile(`${fdExeNM}${fnExe}`)) {
+            fdExe = fdExeNM
+        }
+        else {
+            return { error: 'can not find folder for connLDAP' }
+        }
+    }
 
     //check
     if (get(fdExe, 'error')) {
@@ -149,31 +139,43 @@ async function WLdap(input = {}, opt = {}) {
     }
 
     //prog
-    let prog = getExecPath(fdExe, ver)
+    let prog = `${fdExe}${fnExe}`
 
-    //fnOutput
-    let fnOutput = `_${genID()}`
-    input['__System:OutputFilename'] = fnOutput
+    //fnOut
+    let fnOut = `_${genID()}`
+    input['__System:OutputFilename'] = fnOut
 
     //input to b64
     let cInput = JSON.stringify(input)
     let b64Input = str2b64(cInput)
 
-    //execScript
-    await execScript(prog, b64Input)
+    //execProcess
+    await execProcess(prog, b64Input)
         .catch((err) => {
-            console.log('WLdap execScript catch', err)
+            // console.log('execProcess catch', err)
+            errTemp = err
         })
 
+    //fpOut
+    let fpOut = `${fdExe}${fnOut}`
+
     //read output
-    let pathOutput = `${fdExe}${fnOutput}`
-    let b64Output = fs.readFileSync(pathOutput, 'utf8')
-    b64Output = trimBOM(b64Output)
-    let cOutput = b642str(b64Output)
-    let output = j2o(cOutput)
+    let output = null
+    try {
+        let b64Output = fs.readFileSync(fpOut, 'utf8')
+        b64Output = trimBOM(b64Output)
+        let cOutput = b642str(b64Output)
+        output = j2o(cOutput)
+    }
+    catch (err) {}
 
     //unlinkSync
-    fs.unlinkSync(pathOutput)
+    fs.unlinkSync(fpOut)
+
+    //check
+    if (errTemp !== null) {
+        return Promise.reject(errTemp)
+    }
 
     //check
     if (get(output, 'error')) {
