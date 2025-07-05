@@ -129,20 +129,20 @@ async function WLdap(input = {}, opt = {}) {
             fdExe = fdExeNM
         }
         else {
-            return { error: 'can not find folder for connLDAP' }
+            return Promise.reject('can not find folder for connLDAP')
         }
     }
-
-    //check
-    if (get(fdExe, 'error')) {
-        return Promise.reject(fdExe.error)
-    }
+    // console.log('fdExe', fdExe)
 
     //prog
     let prog = `${fdExe}${fnExe}`
+    // console.log('prog', prog)
+
+    //id
+    let id = genID()
 
     //fnOut
-    let fnOut = `_${genID()}`
+    let fnOut = `_${id}`
     input['__System:OutputFilename'] = fnOut
 
     //input to b64
@@ -152,8 +152,8 @@ async function WLdap(input = {}, opt = {}) {
     //execProcess
     await execProcess(prog, b64Input)
         .catch((err) => {
-            // console.log('execProcess catch', err)
-            errTemp = err
+            console.log('execProcess catch', err)
+            errTemp = err.toString()
         })
 
     //fpOut
@@ -173,7 +173,7 @@ async function WLdap(input = {}, opt = {}) {
     fs.unlinkSync(fpOut)
 
     //check
-    if (errTemp !== null) {
+    if (errTemp) {
         return Promise.reject(errTemp)
     }
 
