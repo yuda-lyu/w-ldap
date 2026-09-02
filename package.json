@@ -1,9 +1,9 @@
 {
   "name": "w-ldap",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "main": "dist/w-ldap.umd.js",
   "dependencies": {
-    "wsemi": "^1.8.81"
+    "wsemi": "^1.8.84"
   },
   "devDependencies": {
     "w-package-tools": "^1.1.15"
