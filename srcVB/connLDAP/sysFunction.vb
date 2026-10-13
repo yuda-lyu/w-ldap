@@ -27,7 +27,10 @@ Public Class sysFunction
 
 
     Public Shared Function j2o(cjson As String) As Object
-        Dim oin As Object = JsonConvert.DeserializeObject(cjson)
+        'DateParseHandling.None: 不把像日期之字串轉為DateTime, 否則如密碼"2020-01-01T00:00:00"會被改寫為在地日期字串
+        Dim settings As New JsonSerializerSettings()
+        settings.DateParseHandling = DateParseHandling.None
+        Dim oin As Object = JsonConvert.DeserializeObject(cjson, settings)
         If TypeName(oin) = "JArray" Then
             Dim ltdt As New List(Of Dictionary(Of String, Object))
             Dim i As Integer = -1
@@ -93,11 +96,8 @@ Public Class sysFunction
 
 
     Public Shared Function b2o(b64 As String) As Object
-        Try
-            Return j2o(b642str(b64))
-        Catch ex As Exception
-        End Try
-        Return Nothing
+        '不吞例外, 解析失敗由呼叫端回報(run.runFunctionEncryption)
+        Return j2o(b642str(b64))
     End Function
 
 
@@ -129,14 +129,10 @@ Public Class sysFunction
 
 
     Public Shared Function b642str(b64 As String) As String
-        Dim str As String = ""
-        Try
-            Dim data() As Byte
-            data = System.Convert.FromBase64String(b64)
-            str = System.Text.ASCIIEncoding.UTF8.GetString(data)
-        Catch ex As Exception
-        End Try
-        Return str
+        '不吞例外, 非有效base64時拋出FormatException由呼叫端回報
+        Dim data() As Byte
+        data = System.Convert.FromBase64String(b64)
+        Return System.Text.ASCIIEncoding.UTF8.GetString(data)
     End Function
 
 

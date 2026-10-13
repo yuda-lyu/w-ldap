@@ -52,15 +52,19 @@ import get from 'lodash-es/get.js'
 import genID from 'wsemi/src/genID.mjs'
 import isestr from 'wsemi/src/isestr.mjs'
 import iseobj from 'wsemi/src/iseobj.mjs'
+import ispint from 'wsemi/src/ispint.mjs'
 import arrHas from 'wsemi/src/arrHas.mjs'
 import str2b64 from 'wsemi/src/str2b64.mjs'
-import b642str from 'wsemi/src/b642str.mjs'
-import j2o from 'wsemi/src/j2o.mjs'
-import execProcess from 'wsemi/src/execProcess.mjs'
+import execCli from 'wsemi/src/execCli.mjs'
 import fsIsFile from 'wsemi/src/fsIsFile.mjs'
+import judgeResult from './judgeResult.mjs'
 
 
 let fdSrv = path.resolve()
+
+
+//timeoutMax, 未給opt.timeout時之逾時上限, 取計時器上限(約24.8天)即實質不設限, 使行為與改用execCli前相同
+let timeoutMax = 2147483647
 
 
 function isWindows() {
@@ -68,24 +72,34 @@ function isWindows() {
 }
 
 
-function trimBOM(c) {
-    return c.replace(
-        String.fromCharCode('65279'), ''
-    )
+//readOutput, 讀取exe之輸出檔, 不存在與讀取失敗分開回報
+function readOutput(fp) {
+    try {
+        return { state: 'read', text: fs.readFileSync(fp, 'utf8') }
+    }
+    catch (err) {
+        if (get(err, 'code') === 'ENOENT') {
+            return { state: 'missing' }
+        }
+        return { state: 'unreadable', msg: `${get(err, 'code', '')} ${get(err, 'message', '')}`.trim() }
+    }
 }
 
 
 /**
  * 呼叫LDAP服務進行登入或取得使用者清單，係呼叫Net程式呼叫LDAP取得資料，故會有Net Framework版本與作業系統限制
  *
- * @param {Object} input 輸入設定物件，預設{}
+ * 輸入(含帳密)經子程序之stdin交給Net程式，不出現在程序之命令列；只轉交mode、account、password、ldappath，不改動呼叫端之input
+ *
+ * @param {Object} input 輸入呼叫資料物件
+ * @param {String} input.mode 輸入呼叫方法字串，可有'logIn'與'listUsers'
+ * @param {String} input.account 輸入LDAP帳號字串
+ * @param {String} input.password 輸入LDAP帳號之密碼字串
+ * @param {String} input.ldappath 輸入LDAP伺服器位址字串
  * @param {Object} [opt={}] 輸入設定物件，預設{}
- * @param {String} [opt.mode] 輸入呼叫方法字串，可有'logIn'與'listUsers'
- * @param {String} [opt.account] 輸入LDAP帳號字串
- * @param {String} [opt.password] 輸入LDAP帳號之密碼字串
- * @param {String} [opt.ldappath] 輸入LDAP伺服器位址字串
  * @param {String} [opt.ver='4.8'] 輸入調用windows程序之Net Framework版本字串，可有'4.5'、'4.6'、'4.7.2'與'4.8'，預設'4.8'
- * @returns {Promise} 回傳Promise，resolve回傳成功訊息，reject回傳錯誤訊息
+ * @param {Number} [opt.timeout] 輸入逾時毫秒數正整數，逾時將強制結束Net程式並reject，未給或非正整數時不設限(實際上限為計時器上限約24.8天)。LDAP伺服器接受連線卻不回應時，Net程式約240秒後自行以錯誤結束
+ * @returns {Promise} 回傳Promise。resolve回傳成功資料：logIn為該帳號之LDAP條目，帳密驗證成功但以samaccountname查無該帳號條目時回傳{success:null}；listUsers為使用者條目陣列。reject一律回傳錯誤訊息字串：輸入檢查失敗為說明字串；LDAP回報之錯誤為其原始訊息；Net程式啟動失敗以'spawn['開頭；Net程式以非0結束以'code['開頭；逾時以'timeout['開頭；Net程式結束但未產生輸出檔為'connLDAP exited without output file'；輸出內容不合格式以'invalid output from connLDAP:'開頭
  * @example
  * import WLdap from 'w-ldap'
  *
@@ -123,7 +137,6 @@ function trimBOM(c) {
  *
  */
 async function WLdap(input = {}, opt = {}) {
-    let errTemp = null
 
     //isWindows
     if (!isWindows()) {
@@ -138,15 +151,18 @@ async function WLdap(input = {}, opt = {}) {
     //check
     let mode = get(input, 'mode')
     if (mode !== 'logIn' &amp;&amp; mode !== 'listUsers') {
-        return Promise.reject(`input.mode needs to be 'logIn or 'listUsers`)
+        return Promise.reject(`input.mode needs to be 'logIn' or 'listUsers'`)
     }
-    if (!isestr(get(input, 'account'))) {
+    let account = get(input, 'account')
+    if (!isestr(account)) {
         return Promise.reject('invalid input.account')
     }
-    if (!isestr(get(input, 'password'))) {
+    let password = get(input, 'password')
+    if (!isestr(password)) {
         return Promise.reject('invalid input.password')
     }
-    if (!isestr(get(input, 'ldappath'))) {
+    let ldappath = get(input, 'ldappath')
+    if (!isestr(ldappath)) {
         return Promise.reject('invalid input.ldappath')
     }
 
@@ -159,6 +175,12 @@ async function WLdap(input = {}, opt = {}) {
     //check
     if (!arrHas(ver, ['4.5', '4.6', '4.7.2', '4.8'])) {
         return Promise.reject('opt.ver needs to be one of 4.5, 4.6, 4.7.2 or 4.8')
+    }
+
+    //timeout, 未給或非正整數時不設限
+    let timeout = get(opt, 'timeout', null)
+    if (!ispint(timeout)) {
+        timeout = timeoutMax
     }
 
     //fnExe
@@ -188,48 +210,55 @@ async function WLdap(input = {}, opt = {}) {
     //id
     let id = genID()
 
-    //fnOut
+    //fnOut, 輸出檔名由WLdap決定
     let fnOut = `_${id}`
-    input['__System:OutputFilename'] = fnOut
 
-    //input to b64
-    let cInput = JSON.stringify(input)
-    let b64Input = str2b64(cInput)
+    //payload, 只轉交exe所需之欄位另建物件, 不改動呼叫端之input
+    let payload = {
+        mode,
+        account,
+        password,
+        ldappath,
+        '__System:OutputFilename': fnOut,
+    }
 
-    //execProcess
-    await execProcess(prog, b64Input)
-        .catch((err) => {
-            console.log('execProcess catch', err)
-            errTemp = err.toString()
-        })
+    //b64Input
+    let b64Input = str2b64(JSON.stringify(payload))
+
+    //exec, 輸入經stdin交給exe, 不出現在程序之命令列
+    let exec = null
+    try {
+        exec = await execCli(prog, [], { input: b64Input, timeoutMs: timeout })
+    }
+    catch (err) {
+        //execCli於spawn同步失敗(如EPERM、UNKNOWN)時會拋錯, 轉為同格式之結果物件, 只取code與message
+        exec = {
+            ok: false,
+            code: null,
+            error: `${get(err, 'code') || 'UNKNOWN'}: ${get(err, 'message', '')}`,
+            stdout: '',
+            stderr: '',
+        }
+    }
 
     //fpOut
     let fpOut = `${fdExe}${fnOut}`
 
-    //read output
-    let output = null
+    //file
+    let file = readOutput(fpOut)
+
+    //unlinkSync, 清理盡力而為, 不決定結局
     try {
-        let b64Output = fs.readFileSync(fpOut, 'utf8')
-        b64Output = trimBOM(b64Output)
-        let cOutput = b642str(b64Output)
-        output = j2o(cOutput)
+        fs.unlinkSync(fpOut)
     }
     catch (err) {}
 
-    //unlinkSync
-    fs.unlinkSync(fpOut)
-
-    //check
-    if (errTemp) {
-        return Promise.reject(errTemp)
+    //judgeResult
+    let r = judgeResult({ exec, timeoutMs: timeout, file })
+    if (r.state === 'error') {
+        return Promise.reject(r.msg)
     }
-
-    //check
-    if (get(output, 'error')) {
-        return Promise.reject(output.error)
-    }
-
-    return get(output, 'success') || output
+    return r.msg
 }
 
 
@@ -248,7 +277,7 @@ export default WLdap
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sun Oct 11 2026 13:18:09 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Tue Oct 13 2026 22:54:33 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

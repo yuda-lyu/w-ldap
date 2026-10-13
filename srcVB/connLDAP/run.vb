@@ -10,30 +10,80 @@ Imports Newtonsoft.Json
 Module run
     Private testMode As Boolean = False '正式階段需關閉
 
-    Sub Main()
+    '離開碼: 0為已完成LDAP呼叫(結果success或error已寫入輸出檔), 1為exe本身之錯誤(訊息寫stderr, 若已知輸出檔名亦以{error}寫入輸出檔), 2為誤用命令列參數
+    Private Const exitDone As Integer = 0
+    Private Const exitError As Integer = 1
+    Private Const exitUsage As Integer = 2
 
-        'cmds
-        Dim cmds As String = Microsoft.VisualBasic.Interaction.Command()
+    Function Main() As Integer
+        Try
 
-        'cmds
-        If testMode Then
-            Dim dt As New Dictionary(Of String, Object)
-            dt.Add("mode", "logIn")
-            'dt.Add("mode", "listUsers")
-            dt.Add("__System:OutputFilename", "output[" & sysFunction.nowtimetag() & "].json")
+            '輸入只由stdin讀取(base64), 不接受命令列參數, 避免帳密出現在程序之命令列
+            If Environment.GetCommandLineArgs().Length > 1 Then
+                writeStderr("command-line input is not supported, write base64 input to stdin")
+                Return exitUsage
+            End If
 
-            'dt.Add("account", "")
-            'dt.Add("password", "")
-            'dt.Add("ldappath", "")
+            'cmds
+            Dim cmds As String = ""
 
-            cmds = sysFunction.o2b(dt)
-            Console.WriteLine("cmds:")
-            Console.WriteLine(cmds)
-        End If
+            'cmds
+            If testMode Then
+                Dim dt As New Dictionary(Of String, Object)
+                dt.Add("mode", "logIn")
+                'dt.Add("mode", "listUsers")
+                dt.Add("__System:OutputFilename", "output[" & sysFunction.nowtimetag() & "].json")
 
-        runFunctionEncryption(cmds)
+                'dt.Add("account", "")
+                'dt.Add("password", "")
+                'dt.Add("ldappath", "")
 
+                cmds = sysFunction.o2b(dt)
+                Console.WriteLine("cmds:")
+                Console.WriteLine(cmds)
+            Else
+                cmds = readStdin() 'stdin未被關閉時(例如於主控台直接執行)會等待至EOF
+            End If
+
+            Return runFunctionEncryption(cmds)
+
+        Catch ex As Exception
+            writeStderr("connLDAP error: " & ex.Message)
+            Return exitError
+        End Try
+    End Function
+
+
+    Private Function readStdin() As String
+        Dim sr As New StreamReader(Console.OpenStandardInput(), New UTF8Encoding(False))
+        Return sr.ReadToEnd().Trim()
+    End Function
+
+
+    Private Sub writeStderr(msg As String)
+        Try
+            Dim sw As New StreamWriter(Console.OpenStandardError(), New UTF8Encoding(False)) '以UTF-8輸出, 不受主控台字碼頁影響
+            sw.Write(msg)
+            sw.Flush()
+        Catch ex As Exception
+        End Try
     End Sub
+
+
+    Private Function getOutputPath(fnOut As String) As String
+        Dim fdSys As String = System.AppDomain.CurrentDomain.BaseDirectory
+        Return fdSys & fnOut
+    End Function
+
+
+    '早期錯誤: 訊息寫stderr, 若已知輸出檔名亦以{error}寫入輸出檔, 並以非0離開碼結束
+    Private Function reportError(msg As String, fnOut As String) As Integer
+        writeStderr(msg)
+        If fnOut <> "" Then
+            sysFunction.writeTextToFile(getOutputPath(fnOut), encodeOutput(sysFunction.resultError(msg)))
+        End If
+        Return exitError
+    End Function
 
 
     Private Function encodeOutput(o As Object) As String
@@ -46,14 +96,11 @@ Module run
     End Function
 
 
-    Private Function runFunctionEncryption(inputB64 As String) As String
-        Dim r As Object = Nothing
-        Dim outputEncode As String = ""
+    Private Function runFunctionEncryption(inputB64 As String) As Integer
 
         'check
         If inputB64 = "" Then
-            r = sysFunction.resultError("no input")
-            Return encodeOutput(r)
+            Return reportError("no input", "")
         End If
 
         'oInput
@@ -61,17 +108,26 @@ Module run
         Try
             oInput = sysFunction.b2o(inputB64)
         Catch ex As Exception
-            r = sysFunction.resultError("b2o error: " & ex.ToString)
-            Return encodeOutput(r)
+            Return reportError("b2o error: " & ex.Message, "")
         End Try
+
+        'fnOut, 輸出檔名由呼叫端決定
+        Dim fnOut As String = ""
+        Try
+            fnOut = oInput("__System:OutputFilename")
+        Catch ex As Exception
+            fnOut = ""
+        End Try
+        If fnOut = "" Then
+            Return reportError("invalid __System:OutputFilename in oInput", "")
+        End If
 
         'mode
         Dim mode As String = ""
         Try
             mode = oInput("mode")
         Catch ex As Exception
-            r = sysFunction.resultError("invalid mode in oInput")
-            Return encodeOutput(r)
+            Return reportError("invalid mode in oInput", fnOut)
         End Try
 
         'oOutput
@@ -82,23 +138,23 @@ Module run
             ElseIf mode = "listUsers" Then
                 oOutput = listUsers(oInput("account"), oInput("password"), oInput("ldappath"))
             Else
-                Dim e = sysFunction.resultError("invalid mode")
-                Return encodeOutput(e)
+                Return reportError("invalid mode", fnOut)
             End If
         Catch ex As Exception
-            r = sysFunction.resultError(mode & " error: " & ex.ToString)
-            Return encodeOutput(r)
+            Return reportError(mode & " error: " & ex.Message, fnOut)
         End Try
 
         'encodeOutput
-        outputEncode = encodeOutput(oOutput)
+        Dim outputEncode As String = encodeOutput(oOutput)
 
-        'save
-        Dim fdSys As String = System.AppDomain.CurrentDomain.BaseDirectory
-        Dim fn As String = fdSys & oInput("__System:OutputFilename")
-        sysFunction.writeTextToFile(fn, outputEncode)
+        'save, 已改用存檔方式回傳數據
+        Dim errWrite As String = sysFunction.writeTextToFile(getOutputPath(fnOut), outputEncode)
+        If errWrite <> "" Then
+            writeStderr("write output error: " & errWrite)
+            Return exitError
+        End If
 
-        Return "" '已改用存檔方式回傳數據
+        Return exitDone
     End Function
 
 
