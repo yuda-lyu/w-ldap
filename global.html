@@ -140,13 +140,14 @@
 <dl class="details">
     
     <dt class="tag-description">Description:</dt>
-    <dd class="tag-description"><ul class="dummy"><li><p>呼叫LDAP服務進行登入或取得使用者清單，係呼叫Net程式呼叫LDAP取得資料，故會有Net Framework版本與作業系統限制</p></li></ul></dd>
+    <dd class="tag-description"><ul class="dummy"><li><p>呼叫LDAP服務進行登入或取得使用者清單，係呼叫Net程式呼叫LDAP取得資料，故會有Net Framework版本與作業系統限制</p>
+<p>輸入(含帳密)經子程序之stdin交給Net程式，不出現在程序之命令列；只轉交mode、account、password、ldappath，不改動呼叫端之input</p></li></ul></dd>
     
 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="WLdap.mjs.html">WLdap.mjs</a>, <a href="WLdap.mjs.html#line78">line 78</a>
+        <a href="WLdap.mjs.html">WLdap.mjs</a>, <a href="WLdap.mjs.html#line92">line 92</a>
     </li></ul></dd>
     
 
@@ -256,7 +257,129 @@
                 </td>
             
 
-            <td class="description last"><p>輸入設定物件，預設{}</p></td>
+            <td class="description last"><p>輸入呼叫資料物件</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>mode</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入呼叫方法字串，可有'logIn'與'listUsers'</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>account</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入LDAP帳號字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>password</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入LDAP帳號之密碼字串</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>ldappath</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>輸入LDAP伺服器位址字串</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -326,158 +449,6 @@
 
         <tr>
             
-                <td class="name"><code>mode</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"><p>輸入呼叫方法字串，可有'logIn'與'listUsers'</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>account</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"><p>輸入LDAP帳號字串</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>password</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"><p>輸入LDAP帳號之密碼字串</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>ldappath</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last"><p>輸入LDAP伺服器位址字串</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
                 <td class="name"><code>ver</code></td>
             
 
@@ -515,6 +486,44 @@
         </tr>
 
     
+
+        <tr>
+            
+                <td class="name"><code>timeout</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>輸入逾時毫秒數正整數，逾時將強制結束Net程式並reject，未給或非正整數時不設限(實際上限為計時器上限約24.8天)。LDAP伺服器接受連線卻不回應時，Net程式約240秒後自行以錯誤結束</p></td>
+        </tr>
+
+    
     </tbody>
 </table>
 
@@ -544,7 +553,7 @@
 
         
 <div class="param-desc">
-    <p>回傳Promise，resolve回傳成功訊息，reject回傳錯誤訊息</p>
+    <p>回傳Promise。resolve回傳成功資料：logIn為該帳號之LDAP條目，帳密驗證成功但以samaccountname查無該帳號條目時回傳{success:null}；listUsers為使用者條目陣列。reject一律回傳錯誤訊息字串：輸入檢查失敗為說明字串；LDAP回報之錯誤為其原始訊息；Net程式啟動失敗以'spawn['開頭；Net程式以非0結束以'code['開頭；逾時以'timeout['開頭；Net程式結束但未產生輸出檔為'connLDAP exited without output file'；輸出內容不合格式以'invalid output from connLDAP:'開頭</p>
 </div>
 
 
@@ -586,7 +595,7 @@
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Sun Oct 11 2026 13:18:09 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Tue Oct 13 2026 22:54:33 GMT+0800 (台北標準時間) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
