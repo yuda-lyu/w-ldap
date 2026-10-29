@@ -174,15 +174,13 @@ describe('api-ldap-sambaAd', function() {
     let fdRoot = h.fdTmp('api-ldap-sambaAd')
     let dockerOk = false
 
-    //call, 於新沙箱以子行程呼叫一次WLdap(真exe), prep可再放入其他exe
-    let call = (name, input, opt = {}, prep = null) => {
+    //call, 於新沙箱以子行程呼叫一次WLdap(真exe經ensureBins自沙箱鏡像離線取得, 組內四版exe與dll皆在)
+    let call = (name, input, opt = {}) => {
         let fd = h.makeSandbox(fdRoot, name, { exe: 'real' })
-        if (prep) {
-            prep(path.join(fd, 'src'))
-        }
         let r = h.runWLdap(fd, { input, opt })
-        //RB3: 輸出檔於呼叫後清除, 不殘留
-        assert.strict.deepEqual(r.filesInSrc.filter((f) => f.startsWith('_')), [], `${name}: 輸出檔殘留`)
+        //RB3: 輸出檔於呼叫後清除, 不殘留(輸出檔落在作業系統暫存夾, 快取夾內也不得有)
+        assert.strict.deepEqual(r.filesInTmp, [], `${name}: 暫存夾輸出檔殘留`)
+        assert.strict.deepEqual(r.filesInCache.filter((f) => path.posix.basename(f).startsWith('_')), [], `${name}: 快取夾輸出檔殘留`)
         //RB4: 函式庫不寫console
         assert.strict.deepEqual(r.logs, [], `${name}: 寫了console`)
         return r
@@ -329,10 +327,7 @@ describe('api-ldap-sambaAd', function() {
 
     it('opt.ver 四版 exe 皆可登入並回該帳號條目(S10, RB9)', function() {
         for (let ver of ['4.5', '4.6', '4.7.2', '4.8']) {
-            let fn = `connLDAP.net${ver}.exe`
-            let r = call(`S10-${ver}`, { mode: 'logIn', ...userNormal, ldappath }, { ver }, (fdSrc) => {
-                fs.copyFileSync(path.join(h.fdRepo, 'src', fn), path.join(fdSrc, fn))
-            })
+            let r = call(`S10-${ver}`, { mode: 'logIn', ...userNormal, ldappath }, { ver })
             expectEntry(r, userNormal.account)
         }
     })

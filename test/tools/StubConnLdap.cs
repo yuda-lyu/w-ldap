@@ -1,12 +1,14 @@
 // 測試用替身 exe: 取代 connLDAP.net*.exe, 供 test/unit-WLdap.test.mjs 於不需 AD 下驗證 WLdap 之結局判定與輸入管道
 // 測試時以 .NET Framework 內建 csc.exe 編譯至 test/_tmp/<案名>/ 下, 版控只放原始碼
 // 輸入: 有命令列參數時取參數(舊協定, 僅供以修前副本對照), 否則讀 stdin(現行協定), 兩者皆為 base64(JSON)
-// 行為由 exe 所在資料夾之 stub-behavior.json 控制:
+// exe 在內容定址之快取夾(經 ensureBins 取得), 不放測試用檔, 故行為檔與紀錄檔所在資料夾取環境變數 STUB_DIR(未設時為 exe 所在資料夾)
+// 輸出檔路徑比照真 exe(srcVB/connLDAP/run.vb 之 getOutputPath): exe 所在資料夾 + 輸出檔名之字串串接(不接受絕對路徑), 故輸出檔名須為相對路徑
+// 行為由 STUB_DIR 之 stub-behavior.json 控制:
 //   exitCode(int, 預設0), sleepMs(int), stdout(string), stderr(string)
 //   file: none(不寫檔, 預設) | raw(原樣寫 content) | json(寫 base64(content)) | echo(寫 base64({"success":<收到之輸入>}))
 //   content(string), bom(bool, 預設true, 真 exe 以 Encoding.UTF8 寫檔故帶 BOM)
 //   holdMs(int, 寫檔後以子程序用不含 FileShare.Delete 之模式持有輸出檔, 模擬他程序占用)
-// 另把自身 PID、收到之命令列、stdin 內容分別寫入 stub-pid.txt、stub-cmdline.txt、stub-stdin.txt, 供測試斷言
+// 另把自身 PID、收到之命令列、stdin 內容、輸出檔實際路徑分別寫入 stub-pid.txt、stub-cmdline.txt、stub-stdin.txt、stub-outpath.txt, 供測試斷言
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -49,27 +51,31 @@ class StubConnLdap {
         }
 
         string dir = AppDomain.CurrentDomain.BaseDirectory;
+        string sdir = Environment.GetEnvironmentVariable("STUB_DIR");
+        if (string.IsNullOrEmpty(sdir)) {
+            sdir = dir;
+        }
         var utf8 = new UTF8Encoding(false);
-        record(Path.Combine(dir, "stub-pid.txt"), Process.GetCurrentProcess().Id.ToString());
-        record(Path.Combine(dir, "stub-cmdline.txt"), Environment.CommandLine);
+        record(Path.Combine(sdir, "stub-pid.txt"), Process.GetCurrentProcess().Id.ToString());
+        record(Path.Combine(sdir, "stub-cmdline.txt"), Environment.CommandLine);
 
         //輸入
         string b64 = "";
         if (args.Length > 0) {
             b64 = string.Join(" ", args);
-            record(Path.Combine(dir, "stub-stdin.txt"), "");
+            record(Path.Combine(sdir, "stub-stdin.txt"), "");
         }
         else {
             using (var sr = new StreamReader(Console.OpenStandardInput(), utf8)) {
                 b64 = sr.ReadToEnd();
             }
-            record(Path.Combine(dir, "stub-stdin.txt"), b64);
+            record(Path.Combine(sdir, "stub-stdin.txt"), b64);
         }
 
         //behavior
         var ser = new JavaScriptSerializer();
         ser.MaxJsonLength = int.MaxValue;
-        string bpath = Path.Combine(dir, "stub-behavior.json");
+        string bpath = Path.Combine(sdir, "stub-behavior.json");
         var b = File.Exists(bpath) ? ser.Deserialize<Dictionary<string, object>>(File.ReadAllText(bpath, Encoding.UTF8)) : new Dictionary<string, object>();
         Func<string, object, object> g = (k, d) => b.ContainsKey(k) && b[k] != null ? b[k] : d;
 
@@ -112,7 +118,8 @@ class StubConnLdap {
                 content = Convert.ToBase64String(Encoding.UTF8.GetBytes(ser.Serialize(new Dictionary<string, object> { { "success", inp } })));
             }
             bool bom = Convert.ToBoolean(g("bom", true));
-            string fpOut = Path.Combine(dir, fnOut);
+            string fpOut = dir + fnOut;
+            record(Path.Combine(sdir, "stub-outpath.txt"), Path.GetFullPath(fpOut));
             File.WriteAllText(fpOut, content, new UTF8Encoding(bom));
             int holdMs = Convert.ToInt32(g("holdMs", 0));
             if (holdMs > 0) {

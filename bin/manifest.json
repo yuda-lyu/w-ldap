@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "pkg": "w-ldap",
+  "mode": "pinned",
+  "repo": "yuda-lyu/w-ldap",
+  "commit": "3ecddc12fd51f46eb5790f7e8eaac8aa0084ca0a",
+  "bundles": [
+    {
+      "name": "connLDAP",
+      "dir": "bin/connLDAP",
+      "files": [
+        {
+          "path": "Newtonsoft.Json.dll",
+          "sha256": "7f912b28a07c226e0be3acfb2f57f050538aba0100fa1f0bf2c39f1a1f1da814",
+          "size": 700336
+        },
+        {
+          "path": "connLDAP.net4.5.exe",
+          "sha256": "fb0d8d5f8fb9cfdb77c2d8a417f4a037d8b6a2f708ae9d738afc7c97957d0311",
+          "size": 17408
+        },
+        {
+          "path": "connLDAP.net4.6.exe",
+          "sha256": "7dbe03dddf6bcbe982099e1ad6991025f4b5cc0d376cdd8c2a9a013dddfbe0a5",
+          "size": 17408
+        },
+        {
+          "path": "connLDAP.net4.7.2.exe",
+          "sha256": "f33e56fe53f89600101000b63e8442c408ecbb1e01d2ed7364071f9a33c79dfd",
+          "size": 17408
+        },
+        {
+          "path": "connLDAP.net4.8.exe",
+          "sha256": "055e128f8380efadea2cddd4908c419133686266a313619c58f7481b103240c2",
+          "size": 17408
+        }
+      ]
+    }
+  ]
+}

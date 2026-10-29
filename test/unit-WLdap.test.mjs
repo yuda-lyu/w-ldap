@@ -7,6 +7,7 @@ import h from './tools/wldapHarness.mjs'
 
 //斷言之依據: WLdap 之 JSDoc 與 run02 需求述語(R/P 編號); 括號內為 run01 審計表 A、B 之列號
 //替身(test/tools/StubConnLdap.cs)於 before 以 csc 編譯至 test/_tmp/unit-WLdap/, after 刪除; 除平台案例外僅於 Windows 執行
+//每案之沙箱為迷你套件(見 test/tools/wldapHarness.mjs): WLdap 經真正的 ensureBins 自沙箱鏡像離線取得 exe 組(快取在沙箱 bin-cache/), 輸出檔落在沙箱的 TEMP(tmp/)
 
 
 let pw = 'P@ss-秘密-😀-123'
@@ -153,7 +154,8 @@ describe('unit-WLdap', function() {
             let r = stub('nomutate', { file: 'echo' }, { input })
             assert.strict.equal(r.outcome, 'resolve', JSON.stringify(r.value))
             assert.strict.deepEqual(r.after, r.before)
-            assert.ok(/^_[0-9A-Za-z]{32}$/.test(r.value['__System:OutputFilename']), r.value['__System:OutputFilename'])
+            //內部輸出檔名由 WLdap 決定(非呼叫端給的 caller-value): 相對於 exe 所在資料夾指向暫存夾之相對路徑, 檔名為 _<id>
+            assert.ok(/^(\.\.\\)+tmp\\_[0-9A-Za-z]{32}$/.test(r.value['__System:OutputFilename']), r.value['__System:OutputFilename'])
             assert.strict.deepEqual(Object.keys(r.value).sort(), ['__System:OutputFilename', 'account', 'ldappath', 'mode', 'password'])
         })
 
@@ -198,7 +200,64 @@ describe('unit-WLdap', function() {
                 assert.strict.equal(x.outcome, 'resolve', JSON.stringify(x.value))
                 assert.strict.equal(x.value.password, `pw-${i}`)
             })
-            assert.strict.deepEqual(r.filesInSrc.filter((f) => f.startsWith('_')), [])
+            assert.strict.deepEqual(r.filesInTmp, [])
+            assert.strict.deepEqual(r.filesInCache.filter((f) => path.posix.basename(f).startsWith('_')), [])
+        })
+
+        it('輸出檔落在作業系統暫存夾而非 exe 所在之快取夾, 用畢即刪(制式規格 §9)', function() {
+            let r = stub('outplace', { file: 'echo' })
+            assert.strict.equal(r.outcome, 'resolve', JSON.stringify(r.value))
+            //替身記錄之輸出檔實際路徑: 在沙箱的 TEMP(tmp/)之下, 檔名即交給 exe 之 __System:OutputFilename 去掉相對前綴後的 _<id>
+            let fdTmpCase = path.join(fdRoot, 'outplace', 'tmp')
+            let fpOut = path.resolve(r.stubOutPath)
+            assert.strict.equal(path.dirname(fpOut).toLowerCase(), fdTmpCase.toLowerCase(), r.stubOutPath)
+            assert.strict.equal(path.basename(fpOut), path.basename(r.value['__System:OutputFilename']))
+            //交給 exe 的是相對於 exe 所在資料夾的相對路徑(exe 以字串串接, 不吃絕對路徑)
+            assert.ok(r.value['__System:OutputFilename'].startsWith('..\\'), r.value['__System:OutputFilename'])
+            assert.strict.deepEqual(r.filesInTmp, [])
+            //快取夾內只有清單所列之 exe, 沒有輸出檔或其他檔
+            assert.strict.equal(r.filesInCache.length, 1, r.filesInCache.join(','))
+            assert.ok(r.filesInCache[0].endsWith('/connLDAP.net4.8.exe'), r.filesInCache[0])
+        })
+
+        it('暫存夾與快取夾在不同磁碟機 → 輸出檔退而寫在 exe 所在資料夾, 仍正確判定並用畢即刪(getOutPlace 之退回路徑)', function() {
+            let fd = h.makeSandbox(fdRoot, 'cross-drive', { exe: 'stub', fpStub, behavior: { file: 'echo' } })
+            let fdDrive = path.join(fd, 'drive')
+            fs.mkdirSync(fdDrive, { recursive: true })
+            //快取放在以 subst 暫掛的磁碟機(W_BIN_CACHE=<代號>:\), 暫存夾(TEMP)在沙箱所在之磁碟機
+            let m = h.withSubstDrive(fdDrive, (letter) => {
+                let r = h.runWLdap(fd, { input: base() }, { W_BIN_CACHE: `${letter}:\\` })
+                return { letter, r }
+            })
+            if (m === null) {
+                this.skip()
+            }
+            let { letter, r } = m.value
+            assert.strict.equal(r.outcome, 'resolve', JSON.stringify(r.value))
+            //交給 exe 的是不含路徑之 _<id>(無相對路徑可達暫存夾), exe 寫在快取夾(此處即 <代號>:\w-ldap\<組識別>\)
+            assert.ok(/^_[0-9A-Za-z]{32}$/.test(r.value['__System:OutputFilename']), r.value['__System:OutputFilename'])
+            assert.ok(r.stubOutPath.toLowerCase().startsWith(`${letter}:\\w-ldap\\`.toLowerCase()), r.stubOutPath)
+            //用畢即刪: 快取夾(經 fdDrive 檢視)只剩 exe, 暫存夾無檔
+            assert.strict.deepEqual(h.listFiles(fdDrive).map((f) => path.posix.basename(f)), ['connLDAP.net4.8.exe'])
+            assert.strict.deepEqual(r.filesInTmp, [])
+        })
+
+        it('清單的組內沒有所選版本之 exe → 以字串拒絕且不啟動(opt.ver 與 bin/manifest.json 不一致)', function() {
+            let r = stub('ver-not-in-bundle', { file: 'echo' }, { opt: { ver: '4.5' } })
+            expectReject(r, 'connLDAP.net4.5.exe is not in the bundle of connLDAP')
+            assert.strict.equal(r.stubPid, null, '不得啟動 exe')
+        })
+
+        it('取得 exe 失敗(離線且鏡像無檔)→ ensureBins[E_OFFLINE_MISSING] 字串, 訊息列出缺的檔與應放位置, 不啟動(E3)', function() {
+            let fd = h.makeSandbox(fdRoot, 'offline-missing', { exe: 'stub', fpStub, behavior: { file: 'echo' } })
+            h.rmrf(path.join(fd, 'mirror'))
+            let r = h.runWLdap(fd, { input: base() })
+            expectReject(r)
+            assert.ok(r.value.startsWith('ensureBins[E_OFFLINE_MISSING]: '), r.value)
+            assert.ok(r.value.includes('connLDAP.net4.8.exe'), r.value)
+            assert.ok(r.value.includes(path.join(fd, 'bin-cache')), r.value)
+            assert.ok(!r.value.includes(pw), '訊息不含密碼')
+            assert.strict.equal(r.stubPid, null, '不得啟動 exe')
         })
 
     })
@@ -217,7 +276,10 @@ describe('unit-WLdap', function() {
             expectReject(r)
             assert.ok(r.value.trim().length > 0)
             assert.ok(!rejectPrefixes.some((p) => r.value.startsWith(p)), r.value)
-            assert.strict.deepEqual(r.filesInSrc.filter((f) => f.startsWith('_')), [])
+            assert.strict.deepEqual(r.filesInTmp, [])
+            assert.strict.deepEqual(r.filesInCache.filter((f) => path.posix.basename(f).startsWith('_')), [])
+            //exe 自快取之組資料夾啟動並載入相鄰之 Newtonsoft.Json.dll(缺 dll 時為 code[1], 見下一案), 快取內為整組五檔
+            assert.strict.deepEqual(r.filesInCache.map((f) => path.posix.basename(f)), ['Newtonsoft.Json.dll', 'connLDAP.net4.5.exe', 'connLDAP.net4.6.exe', 'connLDAP.net4.7.2.exe', 'connLDAP.net4.8.exe'])
         })
 
         it('缺 Newtonsoft.Json.dll → code[1] 並指出原因, 不再遮蔽(P06d, N2, A15)', function() {
@@ -230,17 +292,17 @@ describe('unit-WLdap', function() {
 
         it('exe 不接受命令列輸入: 帶參數執行 → 非 0 結束且 stderr 說明須用 stdin, 不寫輸出檔(P06c)', function() {
             let fd = h.makeSandbox(fdRoot, 'real-args', { exe: 'real' })
-            let fpExe = path.join(fd, 'src', 'connLDAP.net4.8.exe')
+            let fpExe = path.join(fd, 'files', 'connLDAP.net4.8.exe')
             let payload = { ...base(), 'ldappath': 'not-an-adspath', '__System:OutputFilename': '_args' }
             let r = cp.spawnSync(fpExe, [b64(JSON.stringify(payload))], { input: '', windowsHide: true, timeout: 60000 })
             assert.notStrictEqual(r.status, 0)
             assert.ok(r.stderr.toString('utf8').includes('stdin'), r.stderr.toString('utf8'))
-            assert.strict.equal(fs.existsSync(path.join(fd, 'src', '_args')), false)
+            assert.strict.equal(fs.existsSync(path.join(fd, 'files', '_args')), false)
         })
 
         it('像日期之密碼不被 exe 改寫(P06e, N3)', function() {
             let fd = h.makeSandbox(fdRoot, 'real-parse', { exe: 'real' })
-            let fdSrc = path.join(fd, 'src')
+            let fdSrc = path.join(fd, 'files')
             fs.copyFileSync(path.join(fdSrc, 'connLDAP.net4.8.exe'), path.join(fdSrc, 'connLDAP.exe'))
             let fpProbe = path.join(fdSrc, 'ExeParseProbe.exe')
             h.compileCs(path.join(h.fdTools, 'ExeParseProbe.cs'), fpProbe, [path.join(fdSrc, 'connLDAP.exe'), 'Microsoft.VisualBasic.dll'])

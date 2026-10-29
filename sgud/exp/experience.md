@@ -14,7 +14,7 @@
 
 ## 探測與測試之手法
 
-- WLdap 於模組載入時以 cwd 為錨找 exe(`<cwd>/src/` 或 `<cwd>/node_modules/w-ldap/src/`),故要換成替身 exe 必須另起子行程、cwd 設為沙箱(沙箱 `src/connLDAP.net4.8.exe`);不要把替身放進 repo 之 `src/`.
+- (2026-10-29 前之舊制;現況見下方「外部執行檔改制式規格」)WLdap 於模組載入時以 cwd 為錨找 exe(`<cwd>/src/` 或 `<cwd>/node_modules/w-ldap/src/`),故要換成替身 exe 必須另起子行程、cwd 設為沙箱(沙箱 `src/connLDAP.net4.8.exe`);不要把替身放進 repo 之 `src/`.現制:WLdap 經 `ensureBins` 取得 exe 組,沙箱為迷你套件(manifest + 離線鏡像),見該節.
 - 替身 exe 以 `C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe` 編譯(約 0.2 秒),行為由同資料夾之設定檔控制,每案一個沙箱即可並行.
 - csc/vbc 之檔案參數一律用反斜線 Windows 路徑:以正斜線給含中文之絕對路徑時 csc 改以 cwd 相對路徑開檔而失敗.
 - Git Bash 中 `export MSYS_NO_PATHCONV=1` 後,再把 `/c/...` 傳給 node 會變成 `C:\c\...`(全域規範 §11.3);同一指令內兩者不要混用.
@@ -53,6 +53,19 @@
 - 他 repo 是否占用某埠:用 Grep 工具於 `C:\opensrc` 搜 `\b<埠>\b` 並排除 node_modules、dist、docs、tmp;命中資料檔之數值不算.
 - 在 Git Bash 手動驗 docker 引數時,含 `=/` 之引數會被 MSYS 路徑轉換改寫:`--filter 'name=^/w-ldap-test-samba-ad$'` 實際送出 `name=^C:/Program Files/Git/w-ldap-test-samba-ad$`,對存活容器也比不到,曾因此誤判測試之 after 回驗無效而改碼(已還原).手動驗證這類引數要加 `MSYS_NO_PATHCONV=1` 或改由 node `execFile` 送(測試本身走 execFile,不受影響);懷疑時先用 `node -e "console.log(process.argv)" <引數>` 看實際收到什麼.docker 29.6 之 name 過濾器 `^/<名>$`、`^<名>$`、子字串皆可比到.
 - `String.prototype.replace` 之第二參數為字串時會解讀 `` $` ``、`$&` 等序列;取代內容含 `$`(如樣板字串 `^/${ctName}$`)要用函式形式 `() => 字串`.產生突變副本之腳本加「恰好出現一次」之守門,才抓得到取代失敗.
+
+## 外部執行檔改制式規格(bin-ldap,2026-10-29)之經驗
+
+- **exe 的輸出檔路徑是字串串接**(`srcVB/connLDAP/run.vb:73-76`:`BaseDirectory & fnOut`):給絕對路徑會變成 `<exe 夾>C:\...` 而失敗,但給 `..\..\` 開頭的相對路徑可行(`.NET` 先串接再正規化).實測:四版 exe 於 exe 夾長 150/200/230 字元(串接後原始長度 222/274/308 > 260)皆可寫成功(正規化後路徑短);經 junction 啟動時以「從 junction 路徑算出的相對路徑」也可寫成功(BaseDirectory 保持啟動時的路徑,不必 realpath).跨磁碟機(或不同 UNC 共用)無相對路徑,只能退回 exe 夾——這是 exe 端限制,要根治須改 exe(會動清單雜湊與釘選提交,非單輪可為).
+- **跨磁碟機的真實測試**:本機只有 C 槽時,用 `subst <代號>: <資料夾>` 暫掛一個未用的磁碟機代號當快取位置(`W_BIN_CACHE=<代號>:\`),`finally` 以 `subst <代號>: /D` 卸除;找不到可用代號或 `subst` 失敗就 `this.skip()`.不需系統管理員權限.
+- **測試沙箱要走真的 ensureBins**:exe 在內容定址的快取夾後,測試不能再把替身放進 `src/`.做法:沙箱即迷你套件(`src/*.mjs` 副本 + 該案的 `bin/manifest.json` + 離線鏡像 `mirror/w-ldap/<sha256>/<檔名>` + `W_BIN_OFFLINE=1`),子行程 `TEMP`/`TMP` 指向沙箱內 `tmp/` 以檢查輸出檔落點與殘檔;替身的行為檔與紀錄檔不能放快取夾(會改變組內容與組識別),改由環境變數 `STUB_DIR` 指到沙箱內另一夾.替身比照真 exe 以字串串接輸出檔名(`dir + fnOut`),否則會掩蓋「給了絕對路徑」的錯.
+- **攔截 `child_process.spawn`**:wsemi 的 `execCli` 以 `import { spawn } from 'child_process'` 具名匯入;測試對 `cp.spawn` 換成記錄包裝後必須呼叫 `module.syncBuiltinESMExports()` 才會生效,`after` 還原後也要再同步一次.攔截全域 `fetch` 時,轉發用的是「換掉之前保存的原始 fetch」;若轉發函式內再呼叫 `globalThis.fetch`(例如共用的 `fetchLocal`)會遞迴.
+- **`floatingManifestUrl` 不轉傳的測試要用「無效值」**:釘選模式下 wsemi 只在該值不是合法 https 網址(非網址、帶帳密、非 https)時才 `E_ARG`;合法但不在 `raw.githubusercontent.com/<repo>/` 之下的值只在主幹模式才被拒,故用 `'not a url'`、`'https://user:pw@…'`、`'http://…'` 三種才能殺掉「轉傳」變異.
+- **T1 誘餌檔**:`npm pack --dry-run --json` 前在 `src/`、`bin/`、`bin-cache/`、`test/_tmp/`、`srcVB/` 放誘餌 exe/dll,`finally` 刪除;缺規則時確定性變紅.`src/` 之誘餌逼出 `.npmignore` 的 `/src/*.exe`、`/src/*.dll`(舊路徑守門).
+- **vbproj 輸出改到 `bin/connLDAP/`**:以框架 MSBuild(`C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe`)建置複本可行(`-p:Configuration=Debug -nologo -v:m`;Git Bash 下 `/p:` 開頭會被當路徑改寫,一律用 `-` 開頭).產出 `connLDAP.exe`(net4.8)、`Newtonsoft.Json.dll`(與出貨檔同位元組)、`Newtonsoft.Json.xml`、`connLDAP.exe.config`、`connLDAP.pdb`、`connLDAP.xml`;後四者非出貨檔,`.gitignore` 已列(`script.txt` 的 `git add . -A` 會全數加入).
+- **變異驗證腳本**的陷阱:工作樹檔案為 CRLF(autocrlf=true),變異文字含 `\n` 會在 CRLF 檔上「0 次命中」;腳本要有「恰好命中一次」的守門,且片段勿含換行.測試檔因變異而載入即失敗(如清單形狀變了)也算擊殺,但要與「有案例紅」分開記.
+- **測試鎖等待**:同機多套件並行時 `quiet-run --lock` 常等 2~9 分鐘;批次跑(變異、修前紅)宜包成單一腳本一次取放鎖,不要逐項各取一次.
+- 每次 `ensureBins()` 的快取命中成本實測約 0.57 ms(200 次平均,行程內記憶校驗結果),不必在 `WLdap` 內自行記憶.
 
 ## 文件撰寫
 

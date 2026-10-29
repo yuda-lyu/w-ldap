@@ -7,3 +7,15 @@ AGENTS*.md
 tmp
 .opencode
 .claude
+
+# 外部執行檔之快取(制式規格 S5)
+/bin-cache/
+
+# srcVB 建置輸出(vbproj 之 OutputPath 為 bin/connLDAP/)中非出貨檔者; 出貨檔為 connLDAP.net4.x.exe 與 Newtonsoft.Json.dll(script.txt 的 git add 會全數加入)
+/bin/connLDAP/connLDAP.exe
+/bin/connLDAP/connLDAP.exe.config
+/bin/connLDAP/connLDAP.pdb
+/bin/connLDAP/*.xml
+# srcVB 之中間產物(obj)與舊輸出位置(bin);2026-10-29 自版控移除
+/srcVB/**/bin/
+/srcVB/**/obj/
