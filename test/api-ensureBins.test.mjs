@@ -296,30 +296,56 @@ describe(`api-ensureBins (外部執行檔組connLDAP之取得, 制式規格§8 T
         assert.strict.deepStrictEqual([...hits].sort(), fnsAll.map((fn) => `/mirror/${manifest.pkg}/${id}/${fn}`).sort())
     })
 
-    it(`T6: should reject with E_OFFLINE_MISSING listing the whole bundle (names, sha256, sizes, the bundle folder) when offline with no cache and no mirror (O3, M6)`, async function() {
+    it(`T6: should reject with E_OFFLINE_MISSING when offline with no cache and no mirror: err.missing[] lists the whole bundle (names, sha256, sizes, the bundle folder), the message only names the bundle (O3, M6, V20)`, async function() {
         let cacheDir = path.join(fdt, 't6')
         let err = await getErr(ensureBins({ cacheDir, mirror: '', offline: true, fetch: fetchNever }))
         let dir = path.join(path.resolve(cacheDir), id)
         assert.strict.equal(err && err.code, 'E_OFFLINE_MISSING', err && err.message)
+
+        //缺哪些檔、應放何處改由結構欄位err.missing[]驗(規格O3、T6; 原案以訊息內含各檔名、sha256、組資料夾驗)
         assert.strict.equal(err.missing.length, 1)
-        assert.strict.equal(path.resolve(err.missing[0].cachePath), dir, '應放位置為組資料夾')
-        assert.strict.deepStrictEqual(err.missing[0].bundle.files.map((f) => f.path).sort(), [...fnsAll].sort())
-        for (let s of [...fnsAll, ...files.map((f) => f.sha256), dir]) {
-            assert.strict.ok(err.message.includes(s), `訊息須含: ${s}`)
+        let m = err.missing[0]
+        assert.strict.equal(m.name, 'connLDAP')
+        assert.strict.equal(path.resolve(m.cachePath), dir, '應放位置為組資料夾')
+        assert.strict.equal(m.mirrorPath, null) //無鏡像時為null
+        assert.strict.equal(m.bundle.id, id)
+        let byPath = (a, b) => (a.path < b.path ? -1 : 1)
+        let want = [...files].sort(byPath).map((f) => ({ path: f.path, sha256: f.sha256, size: f.size, missing: true, cachePath: path.join(dir, ...f.path.split('/')), mirrorPath: null }))
+        let got = [...m.bundle.files].sort(byPath).map((f) => ({ path: f.path, sha256: f.sha256, size: f.size, missing: f.missing, cachePath: path.resolve(f.cachePath), mirrorPath: f.mirrorPath }))
+        assert.strict.deepStrictEqual(got, want)
+
+        //V20: 訊息含組名, 不含組資料夾、快取根、組識別與各檔sha256
+        assert.strict.ok(err.message.includes('connLDAP'), err.message)
+        for (let s of [dir, cacheDir, path.resolve(cacheDir), id, ...files.map((f) => f.sha256)]) {
+            assert.strict.ok(!err.message.includes(s), `訊息不得含: ${s}`)
         }
         assert.strict.deepStrictEqual(listFiles(cacheDir), [])
         assert.strict.equal(hits.length, 0)
     })
 
-    it(`T6: should list the whole bundle even when only one file is absent from the mirror (O3, M6)`, async function() {
+    it(`T6: should list the whole bundle in err.missing[].bundle.files even when only one file is absent from the mirror, marking only that file as missing (O3, M6, V20)`, async function() {
         let mirror = path.join(fdt, 't6-mirror')
         seedMirror(mirror)
         fs.rmSync(path.join(mirror, manifest.pkg, id, 'connLDAP.net4.6.exe'))
         let cacheDir = path.join(fdt, 't6-cache')
         let err = await getErr(ensureBins({ cacheDir, mirror, offline: true, fetch: fetchNever }))
         assert.strict.equal(err && err.code, 'E_OFFLINE_MISSING', err && err.message)
-        for (let fn of fnsAll) {
-            assert.strict.ok(err.message.includes(fn), `訊息須列全組, 缺: ${fn}`)
+
+        //須列全組(整組備妥), 只有缺的那一檔標missing, 每檔皆有快取與鏡像之完整路徑
+        let m = err.missing[0]
+        let dirCache = path.join(path.resolve(cacheDir), id)
+        let dirMirror = path.join(mirror, manifest.pkg, id)
+        let byPath = (a, b) => (a.path < b.path ? -1 : 1)
+        let got = [...m.bundle.files].sort(byPath).map((f) => ({ path: f.path, missing: f.missing, cachePath: path.resolve(f.cachePath), mirrorPath: f.mirrorPath }))
+        let want = [...files].sort(byPath).map((f) => ({ path: f.path, missing: f.path === 'connLDAP.net4.6.exe', cachePath: path.join(dirCache, ...f.path.split('/')), mirrorPath: path.join(dirMirror, ...f.path.split('/')) }))
+        assert.strict.deepStrictEqual(got, want)
+        assert.strict.equal(path.resolve(m.cachePath), dirCache)
+        assert.strict.equal(m.mirrorPath, dirMirror)
+
+        //V20: 訊息不含各檔路徑與鏡像路徑
+        assert.strict.ok(err.message.includes('connLDAP'), err.message)
+        for (let s of [dirCache, dirMirror, mirror, cacheDir, id]) {
+            assert.strict.ok(!err.message.includes(s), `訊息不得含: ${s}`)
         }
         assert.strict.deepStrictEqual(listFiles(cacheDir), [], '缺一檔時不得發布殘缺的組')
     })
@@ -369,7 +395,12 @@ describe(`api-ensureBins (外部執行檔組connLDAP之取得, 制式規格§8 T
         let o2 = runChild(CHILD_ENSURE, { W_BIN_CACHE: path.resolve(path.join(fdt, 'env-cache2')), W_BIN_OFFLINE: '1' })
         assert.strict.equal(o2.ok, false)
         assert.strict.equal(o2.code, 'E_OFFLINE_MISSING', o2.message)
-        assert.strict.ok(o2.message.includes(path.join(path.resolve(path.join(fdt, 'env-cache2')), manifest.pkg, id)))
+        //應放之位置改由err.missing[]驗(規格T6、V20), 訊息不含路徑
+        let dir2 = path.join(path.resolve(path.join(fdt, 'env-cache2')), manifest.pkg, id)
+        assert.strict.equal(o2.missing.length, 1)
+        assert.strict.equal(path.resolve(o2.missing[0].cachePath), dir2)
+        assert.strict.ok(!o2.message.includes(dir2), o2.message)
+        assert.strict.ok(!o2.message.includes(path.resolve(path.join(fdt, 'env-cache2'))), o2.message)
     })
 
     it(`should locate the package root from the module file, not from the working directory (E2)`, function() {
@@ -377,7 +408,11 @@ describe(`api-ensureBins (外部執行檔組connLDAP之取得, 制式規格§8 T
         let o = runChild(CHILD_ENSURE, { W_BIN_OFFLINE: '1', W_BIN_MIRROR: path.resolve(path.join(fdt, 'empty-mirror')) }, os.tmpdir())
         assert.strict.equal(o.ok, false)
         assert.strict.equal(o.code, 'E_OFFLINE_MISSING', o.message)
-        assert.strict.ok(o.message.includes(path.join(fdRepo, 'bin-cache', id)), o.message)
+        //應放之位置改由err.missing[]驗(規格T6、V20): 須在本套件根, 訊息不含路徑
+        assert.strict.equal(o.missing.length, 1)
+        assert.strict.equal(path.resolve(o.missing[0].cachePath), path.join(fdRepo, 'bin-cache', id), o.message)
+        assert.strict.ok(!o.message.includes(path.join(fdRepo, 'bin-cache')), o.message)
+        assert.strict.ok(!o.message.includes(fdRepo), o.message)
     })
 
     it(`should not forward floatingManifestUrl to fsEnsureBins (it changes the trust anchor; E2)`, async function() {
@@ -516,9 +551,21 @@ describe(`api-ensureBins (外部執行檔組connLDAP之取得, 制式規格§8 T
             let err = await getErr(WLdap(input))
             assert.strict.equal(typeof err, 'string')
             assert.strict.ok(err.startsWith('ensureBins[E_OFFLINE_MISSING]: '), err)
-            for (let fn of fnsAll) {
-                assert.strict.ok(err.includes(fn), fn)
+
+            //規格V20: 字串含組名與固定說明(離線準備請呼叫ensureBins()並讀err.missing[]), 不含組資料夾、快取根、組識別與各檔sha256(原案以字串內含各檔名驗)
+            let dirO = path.join(path.resolve(path.join(fdMain, 'o-cache')), manifest.pkg, id)
+            assert.strict.ok(err.includes('connLDAP'), err)
+            assert.strict.ok(err.includes('ensureBins()') && err.includes('err.missing[]'), err)
+            for (let s of [dirO, path.resolve(path.join(fdMain, 'o-cache')), id, ...files.map((f) => f.sha256)]) {
+                assert.strict.ok(!err.includes(s), `訊息不得含: ${s}`)
             }
+
+            //缺哪些檔、應放何處改由說明所指之途徑取得: 同環境下ensureBins()之err.missing[](規格O3、T6)
+            let errBins = await getErr(ensureBins())
+            assert.strict.equal(errBins && errBins.code, 'E_OFFLINE_MISSING', errBins && errBins.message)
+            assert.strict.equal(path.resolve(errBins.missing[0].cachePath), dirO)
+            assert.strict.deepStrictEqual(errBins.missing[0].bundle.files.map((f) => f.path).sort(), [...fnsAll].sort())
+
             assert.strict.ok(!err.includes(input.password), '訊息不含密碼')
             assert.strict.deepStrictEqual(fetchCalls, [])
             assert.strict.deepStrictEqual(exeSpawns(), [])

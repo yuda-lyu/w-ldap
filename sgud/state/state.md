@@ -23,5 +23,7 @@
 
 ## 最近一次驗證
 
+- 2026-11-18(跟跑 wsemi 1.9.64,V20): 離線缺檔(`E_OFFLINE_MISSING`)之訊息不再含路徑與 sha256,`api-ensureBins` 之 T6 兩案、環境變數案、套件根案、主函數字串案與 `unit-WLdap` 之離線缺檔案改驗 `err.missing[]`(含 `bundle.files[]` 逐檔、鏡像欄位),`WLdap()` 之字串改為只含組名與「呼叫 `ensureBins()` 讀 `err.missing[]`」之固定說明(`ensureBins[E_OFFLINE_MISSING]: …`),README 已補放置位置之讀法;全套 `npm test` 96 passing / 0 failing(修前 90 passing + 6 failing);包裝之 2 式變異(字串夾帶快取路徑、改回透傳)各被 `unit-WLdap` 之離線缺檔案與 `api-ensureBins` 之主函數字串案 2/2 殺.
+
 - 2026-10-29:全套 `npm test` 綠(含 Docker Samba 整合),見任務報告 `C:\opensrcOper\dnow\20261028054319\agent-out\bin-ldap-修正報告.md`;`node C:/opensrcOper/tools/scan-bins.mjs --only w-ldap` 為 OK.
 - 最近一次發布版本:未發布(1.0.39 為發布前版本).

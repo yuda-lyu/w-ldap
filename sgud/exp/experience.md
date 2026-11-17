@@ -72,3 +72,4 @@
 - Markdown 表格儲存格內不要出現管線字元(JS 之邏輯或運算子也會切壞表格);URL 後面要先空一格再接括號,否則自動連結會把括號文字吃進網址.
 - 「所有/皆/恆/只」之全稱與限定句是最常寫錯的地方:run01 自檢抓到 5 處過寬或過窄;寫完用 Grep 掃這些字逐句核對.
 - 由搜尋推得之數量(幾個呼叫端、幾處)一定要用全範圍搜尋;run01 曾因只搜 6 檔把「7 個套件 8 處」寫成「兩支」.
+- wsemi 1.9.64 起 `E_OFFLINE_MISSING` 之訊息只列組名並指向「this error 之 `missing` 欄位」,但 `WLdap()` 以字串 reject、無此欄位,透傳會誤導,故該碼之字串由 `WLdap` 自組(只含組名與「呼叫 `ensureBins()` 讀 `err.missing[]`」);沙箱(迷你套件)內驗 `err.missing[]` 時以 `test/tools/wldapHarness.mjs` 之 `runEnsure(fdCase)` 起子行程呼叫沙箱之 `ensureBins()`(環境變數同 `runWLdap`),回傳 `err.missing` 之 JSON.檔案組之 `missing[0].bundle.files[]` 於離線且鏡像缺一檔時,只有缺的那一檔標 `missing: true`(其餘自鏡像取得者為 false),每檔皆附快取與鏡像之完整路徑.

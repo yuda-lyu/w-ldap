@@ -248,16 +248,33 @@ describe('unit-WLdap', function() {
             assert.strict.equal(r.stubPid, null, '不得啟動 exe')
         })
 
-        it('取得 exe 失敗(離線且鏡像無檔)→ ensureBins[E_OFFLINE_MISSING] 字串, 訊息列出缺的檔與應放位置, 不啟動(E3)', function() {
+        it('取得 exe 失敗(離線且鏡像無檔)→ ensureBins[E_OFFLINE_MISSING] 字串, 訊息只含組名與固定說明(不含路徑與 sha256), 缺的檔與應放位置見 ensureBins() 之 err.missing[], 不啟動(E3, V20)', function() {
             let fd = h.makeSandbox(fdRoot, 'offline-missing', { exe: 'stub', fpStub, behavior: { file: 'echo' } })
             h.rmrf(path.join(fd, 'mirror'))
             let r = h.runWLdap(fd, { input: base() })
             expectReject(r)
             assert.ok(r.value.startsWith('ensureBins[E_OFFLINE_MISSING]: '), r.value)
-            assert.ok(r.value.includes('connLDAP.net4.8.exe'), r.value)
-            assert.ok(r.value.includes(path.join(fd, 'bin-cache')), r.value)
+
+            //V20: 字串含組名與固定說明(離線準備請呼叫 ensureBins() 並讀 err.missing[]), 不含快取路徑、鏡像路徑與 sha256(原案以字串內含檔名與快取路徑驗)
+            let man = JSON.parse(fs.readFileSync(path.join(fd, 'bin', 'manifest.json'), 'utf8'))
+            let ents = man.bundles[0].files
+            assert.ok(r.value.includes('connLDAP'), r.value)
+            assert.ok(r.value.includes('ensureBins()') && r.value.includes('err.missing[]'), r.value)
+            for (let s of [path.join(fd, 'bin-cache'), path.join(fd, 'mirror'), fd, ...ents.map((e) => e.sha256)]) {
+                assert.ok(!r.value.includes(s), `字串不得含: ${s}`)
+            }
             assert.ok(!r.value.includes(pw), '訊息不含密碼')
             assert.strict.equal(r.stubPid, null, '不得啟動 exe')
+
+            //缺的檔與應放位置: 同環境(同沙箱)呼叫 ensureBins() 之 err.missing[](規格 O3、T6)
+            let e = h.runEnsure(fd)
+            assert.strict.equal(e.ok, false)
+            assert.strict.equal(e.code, 'E_OFFLINE_MISSING', e.message)
+            assert.strict.equal(e.missing.length, 1)
+            assert.strict.equal(e.missing[0].name, 'connLDAP')
+            assert.strict.equal(path.resolve(e.missing[0].cachePath).startsWith(path.resolve(fd, 'bin-cache') + path.sep), true, e.missing[0].cachePath)
+            assert.strict.deepStrictEqual(e.missing[0].bundle.files.map((f) => [f.path, f.sha256, f.size, f.missing]), ents.map((x) => [x.path, x.sha256, x.size, true]))
+            assert.strict.equal(path.resolve(e.missing[0].mirrorPath), path.resolve(fd, 'mirror', 'w-ldap', e.missing[0].bundle.id))
         })
 
     })

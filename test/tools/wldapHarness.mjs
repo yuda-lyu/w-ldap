@@ -7,7 +7,7 @@ import fs from 'fs'
 import path from 'path'
 import cp from 'child_process'
 import crypto from 'crypto'
-import { fileURLToPath } from 'url'
+import { fileURLToPath, pathToFileURL } from 'url'
 
 
 let fdTools = path.dirname(fileURLToPath(import.meta.url))
@@ -199,6 +199,31 @@ function runWLdap(fdCase, c = {}, envExtra = {}) {
 }
 
 
+//runEnsure, 於沙箱以子行程呼叫一次沙箱之 ensureBins()(環境變數同 runWLdap), 回傳 { ok, code, message, missing }(missing 為錯誤物件之 err.missing, 供驗離線缺檔之結構欄位)
+function runEnsure(fdCase, envExtra = {}) {
+    let code = `
+import ensureBins from ${JSON.stringify(pathToFileURL(path.join(fdCase, 'src', 'ensureBins.mjs')).href)}
+let o = {}
+try {
+    await ensureBins()
+    o = { ok: true }
+}
+catch (err) {
+    o = { ok: false, code: err.code, message: String(err.message), missing: err.missing || null }
+}
+console.log(JSON.stringify(o))
+`
+    let r = cp.spawnSync(process.execPath, ['--input-type=module', '-e', code], { cwd: fdCase, env: envOf(fdCase, envExtra), encoding: 'utf8', timeout: 120000, windowsHide: true })
+    let lines = String(r.stdout || '').trim().split('\n')
+    try {
+        return JSON.parse(lines[lines.length - 1])
+    }
+    catch (err) {
+        throw new Error(`runEnsure no result: status=${r.status} stdout=${r.stdout} stderr=${r.stderr}`)
+    }
+}
+
+
 //isAlive, 程序是否仍存在
 function isAlive(pid) {
     try {
@@ -225,5 +250,6 @@ export default {
     makeSandbox,
     withSubstDrive,
     runWLdap,
+    runEnsure,
     isAlive,
 }

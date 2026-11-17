@@ -80,7 +80,7 @@ Source: `bin/connLDAP/` of the GitHub repository `yuda-lyu/w-ldap`, pinned to th
 - **Environment variables** (read by `ensureBins()` and by every call of `WLdap`):
   - `W_BIN_CACHE=<folder>`: keep the cache in `<folder>/w-ldap/<bundle id>/` instead of the package folder (use it when `node_modules` is read-only; several packages can share one folder).
   - `W_BIN_MIRROR=<folder or http(s) base URL>`: look in the mirror before GitHub. The layout is `<mirror>/w-ldap/<bundle id>/<file>` (or `<mirror>/w-ldap/<sha256>/<file>` per file). A file from the mirror is checked against the manifest like any other, so a mirror cannot supply a different file; a file that does not match is refused and the next source is tried.
-  - `W_BIN_OFFLINE=1`: never connect to GitHub; use only the cache and the mirror. When a file is missing the call rejects with `ensureBins[E_OFFLINE_MISSING]: ...`, and the message lists the whole bundle (every file with its SHA-256 and size) and the exact cache and mirror paths where it must be put.
+  - `W_BIN_OFFLINE=1`: never connect to GitHub; use only the cache and the mirror. When a file is missing the call rejects with `ensureBins[E_OFFLINE_MISSING]: ...`; the message only names the missing bundle (`connLDAP`) and says how to prepare it, it contains **no paths and no SHA-256**. The whole bundle (every file with its SHA-256 and size) and the exact cache and mirror paths where it must be put are in the `err.missing[]` of the error of `ensureBins()` (see *Where to put the files when offline* below).
 - **Offline deployment** (a machine that cannot reach GitHub):
   1. On a machine with network access set `W_BIN_CACHE` to an empty folder and run a script that calls `ensureBins()` once:
 
@@ -92,6 +92,22 @@ Source: `bin/connLDAP/` of the GitHub repository `yuda-lyu/w-ldap`, pinned to th
 
      (PowerShell: `$env:W_BIN_CACHE='D:\mirror'; node prepare.mjs`.) The folder now holds `w-ldap/<bundle id>/` with the five files.
   2. Copy the whole folder to the offline machine and set `W_BIN_MIRROR=<that folder>` (and `W_BIN_OFFLINE=1` to forbid any network access). The first use copies the verified bundle into the local cache.
+- **Where to put the files when offline**: `ensureBins()` rejects with an `Error` whose `code` is `E_OFFLINE_MISSING`; read the places from `err.missing[]`. Each entry has `name` (`connLDAP`), `cachePath` (the bundle folder in the cache), `mirrorPath` (the bundle folder in the mirror when `W_BIN_MIRROR` is set, otherwise `null`) and `bundle.files[]` with, for every file of the bundle, `path`, `sha256`, `size`, `missing`, `cachePath` and `mirrorPath` (the whole bundle must be present). **Read `cachePath` / `mirrorPath` from `err.missing[]`.** `WLdap(...)` itself rejects with a string that has no such fields, so after `ensureBins[E_OFFLINE_MISSING]: ...` call `WLdap.ensureBins()` in the same environment:
+
+  ```alias
+  import WLdap from 'w-ldap'
+
+  //W_BIN_OFFLINE=1 and the cache and the mirror do not hold the bundle
+  try {
+      await WLdap.ensureBins()
+  }
+  catch (err) {
+      if (err.code === 'E_OFFLINE_MISSING') {
+          console.log(err.missing)
+          // => [ { name: 'connLDAP', cachePath: 'D:\\xxx\\…\\<bundle id>', mirrorPath: null, bundle: { id: '<bundle id>', files: [ { path: 'connLDAP.net4.8.exe', sha256: '…', size: …, missing: true, cachePath: '…', mirrorPath: null }, … ] }, … } ]
+      }
+  }
+  ```
 - **Output file**: the executable writes its result to a file next to itself, named from a relative path given by `WLdap`. `WLdap` points it to the operating system's temporary folder (`os.tmpdir()`), reads it and deletes it, so nothing is written into the bundle folder (which may be shared or read-only). If the temporary folder and the bundle folder are on different drives, a relative path does not exist and the file is written into the bundle folder instead (which then must be writable).
 
 ### Breaking changes: external executables
@@ -99,5 +115,5 @@ Source: `bin/connLDAP/` of the GitHub repository `yuda-lyu/w-ldap`, pinned to th
 - `connLDAP.net4.x.exe` and `Newtonsoft.Json.dll` are no longer inside the npm package (and `srcVB/` is no longer packed). The first call needs network access to GitHub or a mirror (see above); machines that cannot do either must be prepared as described under *Offline deployment*.
 - The executable is no longer looked up under the working directory (`./src/` or `./node_modules/w-ldap/src/`): the files `src/connLDAP.net4.x.exe` and `src/Newtonsoft.Json.dll` no longer exist, so code that used those paths must call `WLdap.ensureBins()` and read `bundles.connLDAP.files[...]` instead. The process may run from any working directory.
 - The output file of each call is written to the operating system's temporary folder, not next to the executable (see *Output file*).
-- A failure to obtain the executable rejects with the string `ensureBins[<code>]: <message>` (`<code>` is `E_OFFLINE_MISSING`, `E_HASH_MISMATCH`, `E_SIZE_MISMATCH`, `E_HTTP`, `E_NETWORK`, ...) before anything is started. Before, a missing executable rejected with the string `can not find folder for connLDAP`.
+- A failure to obtain the executable rejects with the string `ensureBins[<code>]: <message>` (`<code>` is `E_OFFLINE_MISSING`, `E_HASH_MISMATCH`, `E_SIZE_MISMATCH`, `E_HTTP`, `E_NETWORK`, ...) before anything is started (for `E_OFFLINE_MISSING` the string holds no paths and no SHA-256, see *Where to put the files when offline*). Before, a missing executable rejected with the string `can not find folder for connLDAP`.
 - `srcVB/connLDAP/connLDAP.vbproj` now builds into `bin/connLDAP/` (was `srcVB/connLDAP/bin/Debug` and `bin/Release`).
